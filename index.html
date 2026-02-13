@@ -799,40 +799,105 @@
         function activateSuperPower() {
             if (superpowerCooldown > 0 || !gameRunning) return;
 
-            // Criar explosão massiva no centro do jogador
-            const explosionGeometry = new THREE.SphereGeometry(50, 16, 16);
-            const explosionMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xffaa00,
-                transparent: true,
-                opacity: 0.8
-            });
-            const explosion = new THREE.Mesh(explosionGeometry, explosionMaterial);
-            explosion.position.copy(player.position);
-            scene.add(explosion);
+            // Criar múltiplas ondas de explosão
+            const createWave = (delay, radius, color) => {
+                setTimeout(() => {
+                    const waveGeometry = new THREE.SphereGeometry(radius, 32, 32);
+                    const waveMaterial = new THREE.MeshBasicMaterial({ 
+                        color: color,
+                        transparent: true,
+                        opacity: 0.6,
+                        wireframe: true
+                    });
+                    const wave = new THREE.Mesh(waveGeometry, waveMaterial);
+                    wave.position.copy(player.position);
+                    scene.add(wave);
 
-            // Matar todos os zumbis próximos
+                    // Animar a onda
+                    const startTime = Date.now();
+                    const animateDuration = 300;
+                    
+                    const animateWave = () => {
+                        const now = Date.now();
+                        const elapsed = now - startTime;
+                        const progress = elapsed / animateDuration;
+
+                        if (progress >= 1) {
+                            scene.remove(wave);
+                            return;
+                        }
+
+                        wave.scale.set(
+                            1 + progress * 0.5,
+                            1 + progress * 0.5,
+                            1 + progress * 0.5
+                        );
+                        wave.material.opacity = 0.6 * (1 - progress);
+                        requestAnimationFrame(animateWave);
+                    };
+                    animateWave();
+                }, delay);
+            };
+
+            // Criar ondas de cores diferentes
+            createWave(0, 100, 0xff8800);
+            createWave(100, 120, 0xffaa00);
+            createWave(200, 140, 0xffff00);
+
+            // Criar partículas de explosão
+            for (let i = 0; i < 50; i++) {
+                const particleGeom = new THREE.SphereGeometry(0.5, 8, 8);
+                const particleMat = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL(Math.random() * 0.1 + 0.08, 1, 0.5)
+                });
+                const particle = new THREE.Mesh(particleGeom, particleMat);
+                
+                const angle = Math.random() * Math.PI * 2;
+                const elevation = (Math.random() - 0.5) * Math.PI;
+                const distance = 20 + Math.random() * 30;
+                
+                particle.position.set(
+                    player.position.x + Math.cos(angle) * Math.cos(elevation) * distance,
+                    player.position.y + Math.sin(elevation) * distance + 10,
+                    player.position.z + Math.sin(angle) * Math.cos(elevation) * distance
+                );
+                scene.add(particle);
+
+                // Animar partícula caindo
+                let particleLife = 1.5;
+                const particleVelocity = 0.2 + Math.random() * 0.1;
+                const updateParticle = () => {
+                    particleLife -= 0.016;
+                    particle.position.y -= particleVelocity;
+                    particle.material.opacity = Math.max(0, particleLife / 1.5);
+                    
+                    if (particleLife > 0) {
+                        requestAnimationFrame(updateParticle);
+                    } else {
+                        scene.remove(particle);
+                    }
+                };
+                updateParticle();
+            }
+
+            // Matar todos os zumbis no raio aumentado (100 unidades)
             for (let i = zombies.length - 1; i >= 0; i--) {
                 const zombie = zombies[i];
                 const dist = player.position.distanceTo(zombie.position);
                 
-                if (dist < 60) {  // Raio de efeito massivo
+                if (dist < 100) {  // Raio aumentado para 100
                     // Adicionar força e explosão ao zumbi
                     const direction = new THREE.Vector3().subVectors(zombie.position, player.position).normalize();
-                    const force = 0.5;
+                    const force = 1.0;
                     zombie.position.addScaledVector(direction, force);
                     
                     scene.remove(zombie.mesh);
                     zombies.splice(i, 1);
-                    score += zombie.isBoss ? 100 : 10;
+                    score += zombie.isBoss ? 200 : 10; // Boss dourado dá mais pontos
                     killedZombies++;
                     zombiesKilledInPhase++;
                 }
             }
-
-            // Remover explosão visual após curto tempo
-            setTimeout(() => {
-                scene.remove(explosion);
-            }, 200);
 
             // Iniciar cooldown
             superpowerCooldown = superpowerMaxCooldown;
@@ -1033,32 +1098,97 @@
         }
 
         function spawnBoss() {
-            const scale = 2; // Boss é 2x maior
+            const scale = 2.5; // Kurama é 2.5x maior
             const bossCanvas = document.createElement('canvas');
-            bossCanvas.width = 256;
-            bossCanvas.height = 256;
+            bossCanvas.width = 512;
+            bossCanvas.height = 512;
             const bossCtx = bossCanvas.getContext('2d');
 
-            // Desenhar Boss (Naruto em vermelho/dourado)
-            bossCtx.fillStyle = '#ff1a1a'; // Vermelho para boss
-            bossCtx.fillRect(60, 20, 136, 100); // Cabeça maior
-            bossCtx.fillStyle = '#ffaa00';
-            bossCtx.fillRect(80, 40, 36, 36); // Olho esquerdo
-            bossCtx.fillRect(140, 40, 36, 36); // Olho direito
-            bossCtx.fillStyle = '#000';
-            bossCtx.fillRect(84, 44, 16, 16); // Pupila esquerda
-            bossCtx.fillRect(144, 44, 16, 16); // Pupila direita
-            bossCtx.fillStyle = '#ffff00';
-            bossCtx.fillRect(100, 100, 56, 16); // Marca Boss
-            bossCtx.fillStyle = '#ff6600';
-            bossCtx.fillRect(40, 120, 176, 100); // Corpo
-            bossCtx.fillStyle = '#ffaa00';
-            bossCtx.fillRect(30, 180, 30, 60); // Braço esquerdo
-            bossCtx.fillRect(196, 180, 30, 60); // Braço direito
+            // Desenhar Kurama (Raposa de Nove Caudas)
+            // Corpo principal (laranja e preto)
+            bossCtx.fillStyle = '#FF6600';
+            bossCtx.beginPath();
+            bossCtx.ellipse(256, 300, 120, 100, 0, 0, Math.PI * 2);
+            bossCtx.fill();
+
+            // Padrão Preto no corpo
+            bossCtx.fillStyle = '#000000';
+            bossCtx.fillRect(200, 280, 30, 40);
+            bossCtx.fillRect(326, 280, 30, 40);
+            bossCtx.fillRect(263, 360, 40, 30);
+
+            // Cabeça de raposa (grande)
+            bossCtx.fillStyle = '#FF6600';
+            bossCtx.beginPath();
+            bossCtx.ellipse(256, 140, 90, 80, 0, 0, Math.PI * 2);
+            bossCtx.fill();
+
+            // Orelhas pontudas
+            bossCtx.fillStyle = '#FF6600';
+            bossCtx.beginPath();
+            bossCtx.moveTo(180, 80);
+            bossCtx.lineTo(160, 40);
+            bossCtx.lineTo(200, 90);
+            bossCtx.fill();
+
+            bossCtx.beginPath();
+            bossCtx.moveTo(332, 80);
+            bossCtx.lineTo(352, 40);
+            bossCtx.lineTo(312, 90);
+            bossCtx.fill();
+
+            // Focinhos e nariz (preto)
+            bossCtx.fillStyle = '#000000';
+            bossCtx.beginPath();
+            bossCtx.ellipse(256, 160, 20, 15, 0, 0, Math.PI * 2);
+            bossCtx.fill();
+
+            // Olhos vermelhos (aterrorizantes)
+            bossCtx.fillStyle = '#FF0000';
+            bossCtx.beginPath();
+            bossCtx.arc(220, 120, 20, 0, Math.PI * 2);
+            bossCtx.fill();
+            bossCtx.beginPath();
+            bossCtx.arc(292, 120, 20, 0, Math.PI * 2);
+            bossCtx.fill();
+
+            // Pupilas pretas
+            bossCtx.fillStyle = '#000000';
+            bossCtx.beginPath();
+            bossCtx.arc(220, 120, 10, 0, Math.PI * 2);
+            bossCtx.fill();
+            bossCtx.beginPath();
+            bossCtx.arc(292, 120, 10, 0, Math.PI * 2);
+            bossCtx.fill();
+
+            // Nove Caudas (desenhar 9 caudas em fan)
+            bossCtx.strokeStyle = '#FF6600';
+            bossCtx.lineWidth = 25;
+            for (let i = 0; i < 9; i++) {
+                const angle = (i - 4) * 0.3;
+                const startX = 256;
+                const startY = 400;
+                const endX = 256 + Math.sin(angle) * 150;
+                const endY = 400 + Math.cos(angle) * 150;
+                
+                bossCtx.beginPath();
+                bossCtx.moveTo(startX, startY);
+                bossCtx.quadraticCurveTo(
+                    startX + Math.sin(angle) * 80,
+                    startY + Math.cos(angle) * 80,
+                    endX,
+                    endY
+                );
+                bossCtx.stroke();
+            }
 
             const bossTexture = new THREE.CanvasTexture(bossCanvas);
-            const bossGeometry = new THREE.BoxGeometry(0.8 * scale, 2 * scale, 0.6 * scale);
-            const bossMaterial = new THREE.MeshPhongMaterial({ map: bossTexture, emissive: 0xff0000 });
+            const bossGeometry = new THREE.BoxGeometry(1.2 * scale, 1.5 * scale, 0.8 * scale);
+            const bossMaterial = new THREE.MeshPhongMaterial({ 
+                map: bossTexture, 
+                emissive: 0xff4400,
+                shininess: 50
+            });
             const bossMesh = new THREE.Mesh(bossGeometry, bossMaterial);
 
             const angle = Math.random() * Math.PI * 2;
@@ -1073,8 +1203,8 @@
             zombies.push({
                 mesh: bossMesh,
                 position: bossMesh.position,
-                health: 15, // Boss precisa de 15 tiros
-                speed: 0.03, // Boss mais lento
+                health: 20, // Kurama precisa de 20 tiros (mais forte)
+                speed: 0.04, // Um pouco mais rápido que boss anterior
                 isBoss: true
             });
 
