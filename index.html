@@ -277,6 +277,7 @@
         <div class="hud-item">Pontos: <span id="score">0</span></div>
         <div class="hud-item">Zumbis: <span id="zombies">0</span></div>
         <div class="hud-item">Dificuldade: <span id="difficulty">NORMAL</span></div>
+        <div class="hud-item">Câmera: <span id="cameraMode">3ª PESSOA</span> 📷</div>
     </div>
 
     <div class="weapon-info" id="weaponInfo">
@@ -298,6 +299,7 @@
         <p>Click - Atirar</p>
         <p>G - Lançar Kunai</p>
         <p>1/2/3/4 - Trocar Arma</p>
+        <p>F5 - Mudar Câmera</p>
     </div>
 
     <div class="game-over-screen" id="gameOverScreen">
@@ -706,6 +708,7 @@
         let killedZombies = 0;
         let currentWeapon = 'pistol';
         let grenadesCount = Infinity;
+        let cameraMode = 'third-person'; // 'first-person' ou 'third-person'
 
         const keys = {};
         window.addEventListener('keydown', (e) => {
@@ -715,6 +718,7 @@
             if (e.key === '2') changeWeapon('bow');
             if (e.key === '3') changeWeapon('rasengan');
             if (e.key === '4') changeWeapon('kunai');
+            if (e.key === 'F5') toggleCameraMode();
         });
 
         window.addEventListener('keyup', (e) => {
@@ -729,6 +733,12 @@
         });
 
         document.addEventListener('click', shoot);
+
+        function toggleCameraMode() {
+            cameraMode = cameraMode === 'third-person' ? 'first-person' : 'third-person';
+            const modeText = cameraMode === 'first-person' ? '1ª PESSOA' : '3ª PESSOA';
+            document.getElementById('cameraMode').textContent = modeText + ' 📷';
+        }
 
         function changeWeapon(weapon) {
             currentWeapon = weapon;
@@ -1100,34 +1110,48 @@
                 }
             }
 
-            // Câmera em terceira pessoa atrás do jogador - Segue jetpack
-            let cameraDistance = 8;
-            let cameraHeight = player.position.y + 2.5;
-            let cameraSpeed = 0.15;
-
-            // Quando jetpack está ativo, câmera segue mais de perto e mais alto
-            if (player.jetpackActive) {
-                cameraDistance = 6;  // Mais perto quando voa
-                cameraHeight = player.position.y + 3.5;  // Mais alto para ver melhor
-                cameraSpeed = 0.2;  // Mais rápido para acompanhar
+            // Câmera com suporte a primeira e terceira pessoa
+            if (cameraMode === 'first-person') {
+                // Câmera em primeira pessoa - nos olhos do jogador
+                camera.position.x = player.position.x;
+                camera.position.y = player.position.y + 0.8;
+                camera.position.z = player.position.z;
+                
+                // Olhar para frente na direção do movimento
+                const targetPos = new THREE.Vector3().copy(player.position);
+                targetPos.addScaledVector(player.direction, 10);
+                targetPos.y = player.position.y + 0.8;
+                camera.lookAt(targetPos);
             } else {
-                // Suavizar retorno à posição normal
-                cameraDistance = 8;
-                cameraHeight = player.position.y + 2.5;
-                cameraSpeed = 0.15;
-            }
+                // Câmera em terceira pessoa atrás do jogador - Segue jetpack
+                let cameraDistance = 8;
+                let cameraHeight = player.position.y + 2.5;
+                let cameraSpeed = 0.15;
 
-            const targetCamPos = new THREE.Vector3().copy(player.position);
-            targetCamPos.y = cameraHeight;
-            targetCamPos.addScaledVector(player.direction, -cameraDistance);
-            
-            // Movimento suave da câmera
-            camera.position.x += (targetCamPos.x - camera.position.x) * cameraSpeed;
-            camera.position.y += (targetCamPos.y - camera.position.y) * cameraSpeed;
-            camera.position.z += (targetCamPos.z - camera.position.z) * cameraSpeed;
-            
-            // Câmera sempre olha para o personagem
-            camera.lookAt(player.position.clone().setY(player.position.y + 1));
+                // Quando jetpack está ativo, câmera segue mais de perto e mais alto
+                if (player.jetpackActive) {
+                    cameraDistance = 6;  // Mais perto quando voa
+                    cameraHeight = player.position.y + 3.5;  // Mais alto para ver melhor
+                    cameraSpeed = 0.2;  // Mais rápido para acompanhar
+                } else {
+                    // Suavizar retorno à posição normal
+                    cameraDistance = 8;
+                    cameraHeight = player.position.y + 2.5;
+                    cameraSpeed = 0.15;
+                }
+
+                const targetCamPos = new THREE.Vector3().copy(player.position);
+                targetCamPos.y = cameraHeight;
+                targetCamPos.addScaledVector(player.direction, -cameraDistance);
+                
+                // Movimento suave da câmera
+                camera.position.x += (targetCamPos.x - camera.position.x) * cameraSpeed;
+                camera.position.y += (targetCamPos.y - camera.position.y) * cameraSpeed;
+                camera.position.z += (targetCamPos.z - camera.position.z) * cameraSpeed;
+                
+                // Câmera sempre olha para o personagem
+                camera.lookAt(player.position.clone().setY(player.position.y + 1));
+            }
 
             renderer.render(scene, camera);
         }
