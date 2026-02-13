@@ -299,7 +299,7 @@
         <p>Click - Atirar</p>
         <p>G - Lançar Kunai</p>
         <p>1/2/3/4 - Trocar Arma</p>
-        <p>F5 - Mudar Câmera</p>
+        <p>Q - Mudar Câmera</p>
     </div>
 
     <div class="game-over-screen" id="gameOverScreen">
@@ -718,7 +718,7 @@
             if (e.key === '2') changeWeapon('bow');
             if (e.key === '3') changeWeapon('rasengan');
             if (e.key === '4') changeWeapon('kunai');
-            if (e.key === 'F5') toggleCameraMode();
+            if (e.key === 'q' || e.key === 'Q') toggleCameraMode();
         });
 
         window.addEventListener('keyup', (e) => {
