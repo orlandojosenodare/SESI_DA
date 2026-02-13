@@ -275,6 +275,7 @@
     <div class="hud" id="hud">
         <div class="hud-item">Vidas: <span id="lives">3</span> ❤️</div>
         <div class="hud-item">Pontos: <span id="score">0</span></div>
+        <div class="hud-item">Fase: <span id="phase">1</span> ⭐</div>
         <div class="hud-item">Zumbis: <span id="zombies">0</span></div>
         <div class="hud-item">Dificuldade: <span id="difficulty">NORMAL</span></div>
         <div class="hud-item">Câmera: <span id="cameraMode">3ª PESSOA</span> 📷</div>
@@ -709,6 +710,9 @@
         let currentWeapon = 'pistol';
         let grenadesCount = Infinity;
         let cameraMode = 'third-person'; // 'first-person' ou 'third-person'
+        let currentPhase = 1;
+        let zombiesPerPhase = 10;
+        let cameraPitch = 0; // Ângulo vertical da câmera
 
         const keys = {};
         window.addEventListener('keydown', (e) => {
@@ -727,9 +731,16 @@
 
         document.addEventListener('mousemove', (e) => {
             const deltaX = e.movementX || 0;
+            const deltaY = e.movementY || 0;
             player.angle -= deltaX * 0.01;
             player.direction.x = Math.sin(player.angle);
             player.direction.z = Math.cos(player.angle);
+            
+            // Controlar pitch (vertical) da câmera
+            cameraPitch -= deltaY * 0.01;
+            // Limitar pitch entre -Math.PI/2 e Math.PI/2
+            if (cameraPitch > Math.PI / 2) cameraPitch = Math.PI / 2;
+            if (cameraPitch < -Math.PI / 2) cameraPitch = -Math.PI / 2;
         });
 
         document.addEventListener('click', shoot);
@@ -1087,6 +1098,19 @@
                 }
             }
 
+            // Verificar progresso de fase
+            const zombiesForCurrentPhase = killedZombies % zombiesPerPhase;
+            if (zombiesForCurrentPhase === 0 && killedZombies > 0 && zombies.length === 0) {
+                currentPhase++;
+                document.getElementById('phase').textContent = currentPhase;
+                
+                // Aumentar dificuldade a cada fase
+                const settings = difficultySettings[currentDifficulty];
+                settings.spawnRate = Math.max(30, settings.spawnRate - 10);
+                settings.zombieSpeed = Math.min(0.2, settings.zombieSpeed + 0.02);
+                settings.maxZombies = settings.maxZombies + 5;
+            }
+
             document.getElementById('score').textContent = score;
             document.getElementById('zombies').textContent = zombies.length;
         }
@@ -1117,11 +1141,13 @@
                 camera.position.y = player.position.y + 0.8;
                 camera.position.z = player.position.z;
                 
-                // Olhar para frente na direção do movimento
-                const targetPos = new THREE.Vector3().copy(player.position);
-                targetPos.addScaledVector(player.direction, 10);
-                targetPos.y = player.position.y + 0.8;
-                camera.lookAt(targetPos);
+                // Calcular direção olhando com pitch e yaw
+                const distance = 10;
+                const targetX = player.position.x + Math.sin(player.angle) * distance * Math.cos(cameraPitch);
+                const targetY = player.position.y + 0.8 + Math.sin(cameraPitch) * distance;
+                const targetZ = player.position.z + Math.cos(player.angle) * distance * Math.cos(cameraPitch);
+                
+                camera.lookAt(targetX, targetY, targetZ);
             } else {
                 // Câmera em terceira pessoa atrás do jogador - Segue jetpack
                 let cameraDistance = 8;
@@ -1140,8 +1166,11 @@
                     cameraSpeed = 0.15;
                 }
 
+                // Aplicar pitch na câmera
+                const pitchOffset = Math.sin(cameraPitch) * 3;
+                
                 const targetCamPos = new THREE.Vector3().copy(player.position);
-                targetCamPos.y = cameraHeight;
+                targetCamPos.y = cameraHeight + pitchOffset;
                 targetCamPos.addScaledVector(player.direction, -cameraDistance);
                 
                 // Movimento suave da câmera
@@ -1149,8 +1178,10 @@
                 camera.position.y += (targetCamPos.y - camera.position.y) * cameraSpeed;
                 camera.position.z += (targetCamPos.z - camera.position.z) * cameraSpeed;
                 
-                // Câmera sempre olha para o personagem
-                camera.lookAt(player.position.clone().setY(player.position.y + 1));
+                // Câmera sempre olha para o personagem com pitch aplicado
+                const lookTarget = player.position.clone();
+                lookTarget.y = player.position.y + 1 + Math.tan(cameraPitch) * 5;
+                camera.lookAt(lookTarget);
             }
 
             renderer.render(scene, camera);
