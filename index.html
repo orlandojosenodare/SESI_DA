@@ -246,6 +246,45 @@
             transform: translate(-50%, -50%);
             box-shadow: 0 0 6px #ffff00;
         }
+
+        .superpower-info {
+            position: fixed;
+            bottom: 140px;
+            left: 20px;
+            color: #ff00ff;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 2px solid #ff00cc;
+            border-radius: 5px;
+            z-index: 100;
+        }
+
+        .superpower-button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 10px;
+            background: #ff00cc;
+            border: 2px solid #ff00ff;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: 100%;
+            text-align: center;
+        }
+
+        .superpower-button:hover:not(:disabled) {
+            background: #ff33ff;
+            box-shadow: 0 0 10px #ff00ff;
+        }
+
+        .superpower-button:disabled {
+            background: #660066;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
@@ -293,6 +332,12 @@
         <button class="weapon-button" onclick="changeWeapon('kunai')">4 - KUNAI</button>
     </div>
 
+    <div class="superpower-info" id="superpowerInfo">
+        <div style="color: #ff00ff; font-size: 1.1em;">⚡ SHINRA TENSEI ⚡</div>
+        <div style="margin-top: 5px; font-size: 0.9em; color: #ffff00;">Cooldown: <span id="cooldownTime">0</span>s</div>
+        <button class="superpower-button" id="superpowerButton" onclick="activateSuperPower()">E - Ativar</button>
+    </div>
+
     <div class="controls-info">
         <p>WSAD - Mover</p>
         <p>ESPAÇO - Jetpack</p>
@@ -301,6 +346,7 @@
         <p>G - Lançar Kunai</p>
         <p>1/2/3/4 - Trocar Arma</p>
         <p>Q - Mudar Câmera</p>
+        <p>E - Super Poder</p>
     </div>
 
     <div class="game-over-screen" id="gameOverScreen">
@@ -715,6 +761,8 @@
         let cameraPitch = 0; // Ângulo vertical da câmera
         let zombiesKilledInPhase = 0; // Zumbis derrotados na fase atual
         let bossSpawned = false; // Se o boss foi derrotado na fase
+        let superpowerCooldown = 0; // Tempo de espera para o super poder
+        let superpowerMaxCooldown = 30; // 30 segundos de cooldown
 
         const keys = {};
         window.addEventListener('keydown', (e) => {
@@ -725,6 +773,7 @@
             if (e.key === '3') changeWeapon('rasengan');
             if (e.key === '4') changeWeapon('kunai');
             if (e.key === 'q' || e.key === 'Q') toggleCameraMode();
+            if (e.key === 'e' || e.key === 'E') activateSuperPower();
         });
 
         window.addEventListener('keyup', (e) => {
@@ -746,6 +795,62 @@
         });
 
         document.addEventListener('click', shoot);
+
+        function activateSuperPower() {
+            if (superpowerCooldown > 0 || !gameRunning) return;
+
+            // Criar explosão massiva no centro do jogador
+            const explosionGeometry = new THREE.SphereGeometry(50, 16, 16);
+            const explosionMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 0.8
+            });
+            const explosion = new THREE.Mesh(explosionGeometry, explosionMaterial);
+            explosion.position.copy(player.position);
+            scene.add(explosion);
+
+            // Matar todos os zumbis próximos
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                const zombie = zombies[i];
+                const dist = player.position.distanceTo(zombie.position);
+                
+                if (dist < 60) {  // Raio de efeito massivo
+                    // Adicionar força e explosão ao zumbi
+                    const direction = new THREE.Vector3().subVectors(zombie.position, player.position).normalize();
+                    const force = 0.5;
+                    zombie.position.addScaledVector(direction, force);
+                    
+                    scene.remove(zombie.mesh);
+                    zombies.splice(i, 1);
+                    score += zombie.isBoss ? 100 : 10;
+                    killedZombies++;
+                    zombiesKilledInPhase++;
+                }
+            }
+
+            // Remover explosão visual após curto tempo
+            setTimeout(() => {
+                scene.remove(explosion);
+            }, 200);
+
+            // Iniciar cooldown
+            superpowerCooldown = superpowerMaxCooldown;
+            updateSuperpowerButton();
+        }
+
+        function updateSuperpowerButton() {
+            const button = document.getElementById('superpowerButton');
+            const cooldownDisplay = document.getElementById('cooldownTime');
+            
+            if (superpowerCooldown > 0) {
+                button.disabled = true;
+                cooldownDisplay.textContent = superpowerCooldown.toFixed(1);
+            } else {
+                button.disabled = false;
+                cooldownDisplay.textContent = '0';
+            }
+        }
 
         function toggleCameraMode() {
             cameraMode = cameraMode === 'third-person' ? 'first-person' : 'third-person';
@@ -1188,6 +1293,12 @@
                 updateBullets();
                 updateGrenades();
                 updateZombies();
+
+                // Atualizar cooldown do super poder
+                if (superpowerCooldown > 0) {
+                    superpowerCooldown -= 1 / 60; // Diminuir baseado em FPS
+                    updateSuperpowerButton();
+                }
 
                 const settings = difficultySettings[currentDifficulty];
                 spawnTimer++;
