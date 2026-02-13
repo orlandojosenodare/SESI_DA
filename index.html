@@ -183,6 +183,78 @@
             transform: scale(1.05);
         }
 
+        .pause-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .pause-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 50px 60px;
+            border-radius: 15px;
+            text-align: center;
+            border: 4px solid #00ff00;
+            box-shadow: 0 0 30px #00ff00;
+        }
+
+        .pause-content h1 {
+            color: #00ff00;
+            font-size: 4em;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px #00ff00;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .pause-content p {
+            color: #ffff00;
+            font-size: 1.3em;
+            margin-bottom: 40px;
+        }
+
+        .pause-button {
+            display: block;
+            padding: 20px 40px;
+            margin: 15px auto;
+            font-size: 1.3em;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: 300px;
+        }
+
+        .pause-button:hover {
+            background: #00cc00;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #00ff00;
+        }
+
+        .pause-button.secondary {
+            background: #ff0000;
+            color: #fff;
+        }
+
+        .pause-button.secondary:hover {
+            background: #cc0000;
+            box-shadow: 0 0 15px #ff0000;
+        }
+
         .controls-info {
             position: fixed;
             bottom: 20px;
@@ -288,6 +360,15 @@
     </style>
 </head>
 <body>
+    <div class="pause-screen" id="pauseScreen">
+        <div class="pause-content">
+            <h1>⏸️ PAUSADO ⏸️</h1>
+            <p>Pressione ESC para continuar</p>
+            <button class="pause-button" onclick="togglePause()">▶️ Voltar ao Jogo</button>
+            <button class="pause-button secondary" onclick="restartGame()">🔄 Reiniciar</button>
+        </div>
+    </div>
+
     <div class="difficulty-screen" id="difficultyScreen">
         <div class="difficulty-content">
             <h1>⚔️ ZOMBIE SHOOTER 3D ⚔️</h1>
@@ -763,6 +844,7 @@
         let bossSpawned = false; // Se o boss foi derrotado na fase
         let superpowerCooldown = 0; // Tempo de espera para o super poder
         let superpowerMaxCooldown = 30; // 30 segundos de cooldown
+        let isPaused = false; // Estado de pausa
 
         const keys = {};
         window.addEventListener('keydown', (e) => {
@@ -774,6 +856,7 @@
             if (e.key === '4') changeWeapon('kunai');
             if (e.key === 'q' || e.key === 'Q') toggleCameraMode();
             if (e.key === 'e' || e.key === 'E') activateSuperPower();
+            if (e.key === 'Escape') togglePause();
         });
 
         window.addEventListener('keyup', (e) => {
@@ -915,6 +998,23 @@
                 button.disabled = false;
                 cooldownDisplay.textContent = '0';
             }
+        }
+
+        function togglePause() {
+            if (!gameRunning) return;  // Não pausar se jogo terminou
+            
+            isPaused = !isPaused;
+            const pauseScreen = document.getElementById('pauseScreen');
+            
+            if (isPaused) {
+                pauseScreen.style.display = 'flex';
+            } else {
+                pauseScreen.style.display = 'none';
+            }
+        }
+
+        function restartGame() {
+            location.reload();  // Recarregar a página para reiniciar tudo
         }
 
         function toggleCameraMode() {
@@ -1418,7 +1518,7 @@
         function gameLoop() {
             requestAnimationFrame(gameLoop);
 
-            if (gameRunning) {
+            if (gameRunning && !isPaused) {
                 updatePlayer();
                 updateBullets();
                 updateGrenades();
@@ -1438,7 +1538,7 @@
                 }
             }
 
-            // Câmera com suporte a primeira e terceira pessoa
+            // Atualizar câmera (mesmo em pausa)
             if (cameraMode === 'first-person') {
                 // Câmera em primeira pessoa - nos olhos do jogador
                 camera.position.x = player.position.x;
