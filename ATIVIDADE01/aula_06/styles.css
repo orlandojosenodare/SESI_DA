@@ -114,4 +114,13 @@ body{
     text-align: center;
     padding: 20px;
 }
-</html>
+
+.promo-fundo {
+    height: 400px;
+    background-color: black;
+    margin-top: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
