@@ -166,3 +166,30 @@ body {
     color: gray;
 
 }
+
+.card-fundo {
+    background-color: black;
+    padding: 100px;
+}
+
+.titulo {
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.pesquisa {
+    display: flex;
+    justify-content: center;
+    height: 58px;
+}
+
+.pesquisa input{
+    height: 100%;
+    width: 300px;
+    border-radius: 28%;
+
+}
+
+
