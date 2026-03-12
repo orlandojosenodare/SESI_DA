@@ -207,5 +207,57 @@ body {
     border-radius: 10px;
 }
 
+.menu-rodape {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    margin-top: 100px;
+}
+
+.menu-rodape p {
+    font-size: 28px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.menu-rodape ul {
+    display: flex;
+    list-style-type: none;
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.menu-rodape li {
+    margin-right: 25px;
+    cursor: pointer;
+}
+
+#selecionado {
+    color: #EBC154;
+}
+
+.rodape hr {
+    margin-top: -20px;
+}
+
+.redes-social {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 100px;
+}
+
+.item-social {
+    width: 50px;
+    height: 50px;
+    border-radius: 100%;
+    background-color: #EBC154;
+    margin: 10px;
+    cursor: pointer;
+    color: white;
+    fill: white;
+    padding: 8px;
+}
 
 
